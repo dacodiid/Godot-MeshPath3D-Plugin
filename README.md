@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-	<img src="./readme_assets/example1.gif" alt="example1"/>
-	<img src="./readme_assets/example2.gif" alt="example2"/>
+	<img width="49%" src="./readme_assets/example1.gif" alt="example1"/>
+	<img width="49%" src="./readme_assets/example2.gif" alt="example2"/>
 </p>
 
 
