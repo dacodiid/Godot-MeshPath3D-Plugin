@@ -14,7 +14,7 @@
 
 <p align="center">
 	<img src="./readme_assets/example1.gif" alt="example1"/>
-  </a>
+	<img src="./readme_assets/example2.gif" alt="example2"/>
 </p>
 
 
