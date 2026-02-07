@@ -6,7 +6,9 @@ signal vertical_multimesh_updated()
 
 @export_group("Utils")
 
-@export_tool_button("re-render all") var update_all_btn: Callable = call_update_all_lines
+@export_tool_button("randomize lines") var randomize_lines_btn: Callable = randomize_lines
+@export_tool_button("randomize meshes") var randomize_meshes_btn: Callable = randomize_meshes
+#@export_tool_button("re-render all") var update_all_btn: Callable = call_re_render_all
 
 @export_group("Path")
 
@@ -26,13 +28,15 @@ signal vertical_multimesh_updated()
 @export var template_lines: Array[MeshPath3D] = []:
 	set(value):
 		template_lines = value
+		_clear_all_spawned_lines()
 		call_update_all_lines()
+@export var random_pick_template: bool = false
 
 @export_group("Spacing")
 
 @export var gap: float = 1.0:
 	set(value):
-		gap = max(value, -0.9)
+		gap = max(value, -0.5)
 		call_update_all_lines()
 
 @export_group("Internal")
@@ -42,31 +46,64 @@ signal vertical_multimesh_updated()
 		share_multimeshes = value
 		
 		if not share_multimeshes:
-			# Free old synced nodes first
+			# Restore independent paths WITHOUT triggering updates
 			for template in _spawned_lines.keys():
 				if not template:
 					continue
 				var spawned_array: Array = _spawned_lines[template]
 				for line in spawned_array:
-					line.queue_free()
-			_spawned_lines.clear()
-			# Rebuild all lines from scratch
-			call_update_all_lines()
+					# Store existing mesh state
+					var stored_placed_meshes = line._placed_meshes.duplicate()
+					var stored_rotations = line._placed_meshes_rotation.duplicate()
+					var stored_offsets = line._placed_meshes_offset.duplicate()
+					var stored_scales = line._placed_meshes_scale.duplicate()
+					var stored_gaps = line._placed_meshes_gaps.duplicate()
+					var stored_transforms = line._mesh_transforms.duplicate()
+					
+					# Create independent path copy
+					var path_copy: Path3D = Path3D.new()
+					path_copy.curve = template.path.curve.duplicate(true)
+					line.add_child(path_copy)
+					path_copy.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+					line.path = path_copy
+					
+					# Restore mesh state
+					line._placed_meshes = stored_placed_meshes
+					line._placed_meshes_rotation = stored_rotations
+					line._placed_meshes_offset = stored_offsets
+					line._placed_meshes_scale = stored_scales
+					line._placed_meshes_gaps = stored_gaps
+					line._mesh_transforms = stored_transforms
+					
+					# Cancel the scheduled update
+					line._shedule_multimesh_update = false
+					line._passed_frames = 0
+					
+					# Re-enable updates
+					line.set_physics_process(true)
 		else:
-			# When turning sync on, free old paths and share references
+			# When turning sync on, share references WITHOUT freeing paths
 			for template in _spawned_lines.keys():
 				if not template:
 					continue
 				var spawned_array: Array = _spawned_lines[template]
 				for line in spawned_array:
-					if line.path and line.path != template.path:
+					# Disconnect line's path change handler
+					if line.path and line.path.curve and line.path.curve.is_connected("changed", line._on_path_changed):
+						line.path.curve.changed.disconnect(line._on_path_changed)
+					# Free old independent path if exists
+					if line.path and line.path.get_parent() == line:
 						line.path.queue_free()
+					# Share template's path
 					line.path = template.path
+					line.set_physics_process(false)
 			call_update_all_lines()
 
 @export var multimesh_update_rate: int = 2
 
 @export_storage var _last_template_index: int = -1
+
+var _spawned_lines_list: Array[MeshPath3D] = []
 
 # Dictionary mapping template -> array of spawned copies\
 # @param {MeshPath3D: Array[MeshPath3D]} _spawned_lines
@@ -77,6 +114,11 @@ var _passed_frames: int = 0
 
 
 func _ready() -> void:
+	# Collect existing spawned children
+	for child in get_children():
+		if child is MeshPath3D and child != vertical_path:
+			_spawned_lines_list.append(child)
+	
 	if Engine.is_editor_hint():
 		if vertical_path and vertical_path.curve and not vertical_path.curve.is_connected("changed", _on_vertical_path_changed):
 			vertical_path.curve.changed.connect(_on_vertical_path_changed)
@@ -98,6 +140,26 @@ func _physics_process(_delta: float) -> void:
 
 func _on_vertical_path_changed() -> void:
 	call_update_all_lines()
+
+
+#func call_re_render_all() -> void:
+	#_clear_all_spawned_lines()
+	#call_update_all_lines()
+
+
+func randomize_lines() -> void:
+	var prev_val: bool = random_pick_template
+	random_pick_template = true
+	_clear_all_spawned_lines()
+	call_update_all_lines()
+	await vertical_multimesh_updated
+	random_pick_template = prev_val
+
+
+func randomize_meshes() -> void:
+	for line in _spawned_lines_list:
+		if line:
+			line.randomize_meshes()
 
 
 func call_update_all_lines() -> void:
@@ -132,39 +194,38 @@ func _update_all_lines() -> void:
 		_clear_spawned_lines_for_template(template)
 		_spawned_lines.erase(template)
 	
-	# Track line index per template
-	var template_line_indices: Dictionary = {}
-	for template in template_lines:
-		if template:
-			template_line_indices[template] = 0
-	
-	# Single loop - spawn lines picking templates in order
+	# Single loop - spawn lines picking templates in order or random
 	var current_distance: float = 0.0
+	var global_line_index: int = 0
 	_last_template_index = -1
 	
 	while current_distance < curve_length:
-		# Pick next template in order (skip nulls)
+		# Pick next template in order or random (skip nulls)
 		var template: MeshPath3D = null
 		var attempts: int = 0
 		while not template and attempts < template_lines.size():
-			_last_template_index = (_last_template_index + 1) % template_lines.size()
+			if random_pick_template:
+				_last_template_index = randi() % template_lines.size()
+			else:
+				_last_template_index = (_last_template_index + 1) % template_lines.size()
 			template = template_lines[_last_template_index]
 			attempts += 1
 		
 		if not template:
 			break
 		
-		var spawned_array: Array = _spawned_lines[template]
-		var line_index: int = template_line_indices[template]
 		var line: MeshPath3D
 		
-		# Reuse existing line
-		if line_index < spawned_array.size():
-			line = spawned_array[line_index]
+		# Reuse existing line from flat list
+		if global_line_index < _spawned_lines_list.size():
+			line = _spawned_lines_list[global_line_index]
 		# Spawn new line
 		else:
 			line = _create_line_copy(template)
-			spawned_array.append(line)
+			_spawned_lines_list.append(line)
+			if not _spawned_lines.has(template):
+				_spawned_lines[template] = []
+			_spawned_lines[template].append(line)
 			# Force immediate update to calculate AABB
 			line._update_multimesh()
 		
@@ -176,17 +237,19 @@ func _update_all_lines() -> void:
 		var line_height: float = line.get_height() if line.get_height() > 0 else 1.0
 		
 		current_distance += line_height + gap
-		template_line_indices[template] += 1
+		global_line_index += 1
 	
-	# Remove excess lines for each template
-	for template in _spawned_lines.keys():
-		if not template:
-			continue
-		var spawned_array: Array = _spawned_lines[template]
-		var final_count: int = template_line_indices.get(template, 0)
-		while spawned_array.size() > final_count:
-			var line: MeshPath3D = spawned_array.pop_back()
-			line.queue_free()
+	# Remove excess lines
+	while _spawned_lines_list.size() > global_line_index:
+		var line: MeshPath3D = _spawned_lines_list.pop_back()
+		# Also remove from per-template tracking
+		for template in _spawned_lines.keys():
+			var spawned_array: Array = _spawned_lines[template]
+			var idx = spawned_array.find(line)
+			if idx != -1:
+				spawned_array.remove_at(idx)
+				break
+		line.queue_free()
 	
 	# Handle shared multimeshes
 	if share_multimeshes:
@@ -245,6 +308,9 @@ func _create_line_copy(template: MeshPath3D) -> MeshPath3D:
 	new_line.mesh_scale2 = template.mesh_scale2
 	new_line.processor = template.processor
 	
+	if share_multimeshes:
+		new_line.multimesh_update_rate = 999999
+	
 	return new_line
 
 
@@ -269,8 +335,11 @@ func _clear_spawned_lines_for_template(template: MeshPath3D) -> void:
 	if not _spawned_lines.has(template):
 		return
 	
-	var spawned_array: Array[MeshPath3D] = _spawned_lines[template]
+	var spawned_array: Array = _spawned_lines[template]
 	for line in spawned_array:
+		var idx = _spawned_lines_list.find(line)
+		if idx != -1:
+			_spawned_lines_list.remove_at(idx)
 		line.queue_free()
 	spawned_array.clear()
 
@@ -279,6 +348,7 @@ func _clear_all_spawned_lines() -> void:
 	for template in _spawned_lines.keys():
 		_clear_spawned_lines_for_template(template)
 	_spawned_lines.clear()
+	_spawned_lines_list.clear()
 
 
 func setup_default_path() -> void:
@@ -288,6 +358,7 @@ func setup_default_path() -> void:
 		vertical_path.curve.add_point(Vector3(0, 1, 0))
 	else:
 		var new_path: Path3D = Path3D.new()
+		new_path.name = "MeshPath3DVM_Path"
 		new_path.curve = Curve3D.new()
 		new_path.curve.add_point(Vector3.ZERO)
 		new_path.curve.add_point(Vector3(0, 1, 0))
