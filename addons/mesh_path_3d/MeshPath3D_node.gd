@@ -160,6 +160,7 @@ enum COLLISION_TYPE {
 @export_storage var _last_ordered_index: int = -1
 @export_storage var _last_random_index: int = -1
 @export_storage var _placed_meshes_gaps: Array[float] = []
+@export_storage var _cached_aabb: AABB
 
 @export_group("Internal")
 
@@ -208,6 +209,14 @@ func _ready() -> void:
 		call_update_multimesh()
 	else:
 		call_deferred("call_update_multimesh")
+
+
+func get_cached_aabb() -> AABB: 
+	return _cached_aabb
+
+
+func get_height() -> float: 
+	return _cached_aabb.size.y
 
 
 func _on_path_changed() -> void:
@@ -413,6 +422,23 @@ func _update_multimesh() -> void:
 			_mesh_to_mmi_map[mesh_].multimesh.set_instance_transform(j, transforms[j])
 			if processor:
 				processor.process_mesh(_mesh_to_mmi_map[mesh_].multimesh, j)
+	
+	# Calculate combined AABB
+	if not _mesh_transforms.is_empty():
+		var combined_aabb: AABB
+		for mesh_index in range(min(_placed_meshes.size(), _mesh_transforms.size())):
+			var placed_meshe: Mesh = _placed_meshes[mesh_index]
+			if not placed_meshe:
+				continue
+			var mesh_aabb: AABB = placed_meshe.get_aabb()
+			var transformed_aabb: AABB = _mesh_transforms[mesh_index] * mesh_aabb
+			if mesh_index == 0:
+				combined_aabb = transformed_aabb
+			else:
+				combined_aabb = combined_aabb.merge(transformed_aabb)
+		_cached_aabb = combined_aabb
+	else:
+		_cached_aabb = AABB()
 	
 	multimesh_updated.emit()
 
