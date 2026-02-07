@@ -48,12 +48,32 @@ signal vertical_multimesh_updated()
 		share_multimeshes = value
 		
 		if not share_multimeshes:
-			# Break the multimesh sharing
+			# Break path and multimesh sharing
 			for template in _spawned_lines.keys():
 				if not template:
 					continue
 				var spawned_array: Array = _spawned_lines[template]
 				for line in spawned_array:
+					# Update existing independent path with template's curve
+					if line.path and line.path.curve:
+						# Disconnect to prevent update triggers
+						if line.path.curve.is_connected("changed", line._on_path_changed):
+							line.path.curve.changed.disconnect(line._on_path_changed)
+						
+						# Copy curve data from template
+						line.path.curve = template.path.curve.duplicate(true)
+						
+						# Reconnect
+						line.path.curve.changed.connect(line._on_path_changed)
+					
+					# Copy mesh placement data from template
+					line._placed_meshes = template._placed_meshes.duplicate()
+					line._placed_meshes_rotation = template._placed_meshes_rotation.duplicate()
+					line._placed_meshes_offset = template._placed_meshes_offset.duplicate()
+					line._placed_meshes_scale = template._placed_meshes_scale.duplicate()
+					line._placed_meshes_gaps = template._placed_meshes_gaps.duplicate()
+					line._mesh_transforms = template._mesh_transforms.duplicate()
+					
 					# Create new independent multimesh for each MMI
 					for mesh in line._mesh_to_mmi_map.keys():
 						var old_mm = line._mesh_to_mmi_map[mesh].multimesh
