@@ -458,7 +458,8 @@ func _bake_single_merged(meshes: Array, transforms: Array) -> Dictionary:
 		container.add_child(baked_instance)
 	
 	baked_instance.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
-	# Don't set global_transform - position is already in transforms
+	if bake_as_sibling and not bake_in_single_sub_container:
+		baked_instance.global_transform = global_transform
 	
 	return {
 		"container": container,
