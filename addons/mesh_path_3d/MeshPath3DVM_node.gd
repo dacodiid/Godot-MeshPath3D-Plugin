@@ -10,6 +10,21 @@ signal vertical_multimesh_updated()
 @export_tool_button("randomize meshes") var randomize_meshes_btn: Callable = randomize_meshes
 #@export_tool_button("re-render all") var update_all_btn: Callable = call_re_render_all
 
+@export_group("Bake")
+
+@export_tool_button("bake single") var bake_single_btn: Callable = bake_single
+@export_tool_button("bake multiple") var bake_multiple_btn: Callable = bake_multiple
+@export_tool_button("bake multiple with collision") var bake_multiple_collision_btn = bake_multiple_with_collision
+@export var bake_in_single_sub_container: bool = false
+@export var bake_in_separate_sub_containers: bool = false
+@export var bake_as_sibling: bool = false
+
+@export_group("Collision")
+
+@export var collision_type: MeshPath3D.COLLISION_TYPE
+@export_tool_button("bake single collision") var add_collision_btn = add_single_collision
+@export_tool_button("bake multiple collision") var add_multiple_collision_btn = add_multiple_collision
+
 @export_group("Path")
 
 @export var vertical_path: Path3D:
@@ -359,3 +374,153 @@ func setup_default_path() -> void:
 		vertical_path = new_path
 		add_child(new_path)
 		new_path.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+
+
+func bake_single() -> Dictionary:
+	# Custom: merge all lines into one mesh
+	var all_meshes: Array[Mesh] = []
+	var all_transforms: Array[Transform3D] = []
+	
+	for line in _spawned_lines_list:
+		if not line:
+			continue
+		for i in range(line._placed_meshes.size()):
+			all_meshes.append(line._placed_meshes[i])
+			all_transforms.append(Transform3D(line._mesh_transforms[i].basis, line._mesh_transforms[i].origin + line.position))
+	
+	return _bake_single_merged(all_meshes, all_transforms)
+
+
+func _bake_single_merged(meshes: Array, transforms: Array) -> Dictionary:
+	if meshes.is_empty():
+		push_warning("No meshes to bake!")
+		return {}
+	
+	var surface_tool: SurfaceTool = SurfaceTool.new()
+	var baked_mesh: ArrayMesh = ArrayMesh.new()
+	
+	for i in range(meshes.size()):
+		var mesh: Mesh = meshes[i]
+		var mesh_transform: Transform3D = transforms[i]
+		
+		if not mesh:
+			continue
+		
+		for surface_idx in range(mesh.get_surface_count()):
+			surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+			
+			var arrays: Array = mesh.surface_get_arrays(surface_idx)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+			var uvs: Variant = arrays[Mesh.ARRAY_TEX_UV] if arrays[Mesh.ARRAY_TEX_UV] else null
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+			
+			for j in range(vertices.size()):
+				if normals:
+					surface_tool.set_normal(mesh_transform.basis * normals[j])
+				if uvs:
+					surface_tool.set_uv(uvs[j])
+				surface_tool.add_vertex(mesh_transform * vertices[j])
+			
+			if indices:
+				for idx in indices:
+					surface_tool.add_index(idx)
+			
+			surface_tool.commit(baked_mesh)
+	
+	var baked_instance: MeshInstance3D = MeshInstance3D.new()
+	baked_instance.mesh = baked_mesh
+	baked_instance.name = name + "_Baked"
+	
+	# Use first template's material if available
+	if not template_lines.is_empty() and template_lines[0]:
+		baked_instance.material_override = template_lines[0].material
+	
+	# Get container from VM (this node), not from lines
+	var parent_node: Node = get_parent() if bake_as_sibling else self
+	var container: Node
+	
+	if bake_in_single_sub_container:
+		container = Node3D.new()
+		parent_node.add_child(container)
+		container.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+		container.global_transform = global_transform
+	else:
+		container = parent_node
+	
+	if bake_in_separate_sub_containers:
+		var sub_container: Node3D = Node3D.new()
+		container.add_child(sub_container)
+		sub_container.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+		sub_container.global_transform = global_transform
+		sub_container.add_child(baked_instance)
+	else:
+		container.add_child(baked_instance)
+	
+	baked_instance.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
+	# Don't set global_transform - position is already in transforms
+	
+	return {
+		"container": container,
+		"baked": baked_instance,
+	}
+
+
+func bake_multiple() -> Dictionary[String, Variant]:
+	# Just call each line's bake_multiple
+	var all_baked: Array[MeshInstance3D] = []
+	var container = null
+	
+	for line in _spawned_lines_list:
+		if not line:
+			continue
+		var result = line.bake_multiple()
+		if container == null:
+			container = result.get("container")
+		all_baked.append_array(result.get("baked", []))
+	
+	return {"container": container, "baked": all_baked}
+
+
+func bake_multiple_with_collision() -> Dictionary[String, Variant]:
+	# Just call each line's bake_multiple_with_collision
+	var all_baked: Array = []
+	var container = null
+	
+	for line in _spawned_lines_list:
+		if not line:
+			continue
+		var result = line.bake_multiple_with_collision()
+		if container == null:
+			container = result.get("container")
+		all_baked.append_array(result.get("baked", []))
+	
+	return {"container": container, "baked": all_baked}
+
+
+func add_single_collision() -> void:
+	# Calculate combined AABB and call line's collision creation
+	var combined_aabb = _calculate_all_aabb()
+	if template_lines.is_empty() or not template_lines[0]:
+		return
+	var temp_line = template_lines[0]
+	var collision_body = temp_line._create_collision_body(temp_line._get_container())
+	var collision_shape = temp_line._create_collision_shape(combined_aabb.size, collision_body)
+	collision_shape.position = combined_aabb.get_center()
+
+
+func add_multiple_collision() -> void:
+	# Just call each line's add_multiple_collision
+	for line in _spawned_lines_list:
+		if line:
+			line.add_multiple_collision()
+
+
+func _calculate_all_aabb() -> AABB:
+	# Merge all line AABBs
+	var combined = AABB()
+	for line in _spawned_lines_list:
+		if line and not line._mesh_transforms.is_empty():
+			var line_aabb = line._calculate_combined_aabb()
+			combined = combined.merge(line.global_transform * line_aabb) if combined.has_volume() else line.global_transform * line_aabb
+	return combined
