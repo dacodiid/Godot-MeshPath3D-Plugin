@@ -729,7 +729,7 @@ func add_multiple_collision(parent_ref: Node = null) -> void:
 			container = _create_container(main_container)
 		
 		var collision_body: CollisionObject3D = _create_collision_body(container)
-		collision_body.position = mesh_transform.origin + mesh_transform.basis * mesh_aabb.get_center()
+		collision_body.global_position = global_position + mesh_transform.origin + mesh_transform.basis * mesh_aabb.get_center()
 		
 		var collision_shape: CollisionShape3D = _create_collision_shape(mesh_aabb.size, collision_body)
 		collision_shape.basis = mesh_transform.basis
