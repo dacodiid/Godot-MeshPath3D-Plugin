@@ -688,17 +688,34 @@ func _create_collision_shape(box_size: Vector3, parent_node: CollisionObject3D) 
 	return collision_shape
 
 
+#func add_single_collision(parent_ref: Node = null) -> void:
+	#if _mesh_transforms.is_empty():
+		#push_warning("No meshes placed")
+		#return
+	#
+	#var collision_body: CollisionObject3D = _create_collision_body(_get_container(parent_ref))
+	#var combined_aabb: AABB = _calculate_combined_aabb()
+	#
+	#var collision_shape: CollisionShape3D = _create_collision_shape(combined_aabb.size, collision_body)
+	#collision_shape.position = combined_aabb.get_center()
+
 func add_single_collision(parent_ref: Node = null) -> void:
 	if _mesh_transforms.is_empty():
 		push_warning("No meshes placed")
 		return
 	
-	var collision_body: CollisionObject3D = _create_collision_body(_get_container(parent_ref))
+	var container: Node = _get_container(parent_ref)
+	
+	# Add this block for separate containers:
+	if bake_in_separate_sub_containers:
+		var sub_container: Node3D = _create_container(container)
+		container = sub_container
+	
+	var collision_body: CollisionObject3D = _create_collision_body(container)
 	var combined_aabb: AABB = _calculate_combined_aabb()
 	
 	var collision_shape: CollisionShape3D = _create_collision_shape(combined_aabb.size, collision_body)
 	collision_shape.position = combined_aabb.get_center()
-
 
 func add_multiple_collision(parent_ref: Node = null) -> void:
 	if _mesh_transforms.is_empty():
