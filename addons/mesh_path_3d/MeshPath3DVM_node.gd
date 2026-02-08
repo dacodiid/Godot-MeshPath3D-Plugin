@@ -564,6 +564,12 @@ func add_single_collision(parent_ref: Node = null) -> void:
 	var container: Node = _create_container(parent_node) if bake_in_single_sub_container else parent_node
 	
 	var collision_body = temp_line._create_collision_body(container)
+	
+	# Add this block for separate containers:
+	if bake_in_separate_sub_containers:
+		var sub_container: Node3D = _create_container(container)
+		collision_body.reparent(sub_container)
+	
 	var collision_shape = temp_line._create_collision_shape(combined_aabb.size, collision_body)
 	collision_body.global_position = combined_aabb.get_center()
 	temp_line.collision_type = old_collision
@@ -587,13 +593,16 @@ func add_multiple_collision(parent_ref: Node = null) -> void:
 		if line:
 			var old_collision = line.collision_type
 			var old_separate = line.bake_in_separate_sub_containers
+			var old_single = line.bake_in_single_sub_container
 			line.collision_type = collision_type
 			line.bake_in_separate_sub_containers = bake_in_separate_sub_containers
+			line.bake_in_single_sub_container = false  # Force false to use passed container
 			
 			line.add_multiple_collision(container)
 			
 			line.collision_type = old_collision
 			line.bake_in_separate_sub_containers = old_separate
+			line.bake_in_single_sub_container = old_single
 
 
 func _calculate_all_aabb() -> AABB:
