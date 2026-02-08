@@ -321,14 +321,32 @@ func _update_multimesh() -> void:
 		
 		var aabb: AABB = _mesh_base_aabbs[mesh]
 
-		# Apply only scale and rotation (no curve rotation yet for size calc)
 		var temp_transform: Transform3D = Transform3D()
 		temp_transform.basis = rotation_basis * scale_basis
 		var rotated_aabb: AABB = temp_transform * aabb
 
-		var back_offset: float = rotated_aabb.position.z
-		var front_offset: float = rotated_aabb.end.z
-		var mesh_length: float = front_offset - back_offset
+		var back_offset: float
+		var front_offset: float
+		var mesh_length: float
+
+		# If fully facing path, use simple Z calculation
+		if mesh_face_path_x and mesh_face_path_y and mesh_face_path_z:
+			back_offset = rotated_aabb.position.z
+			front_offset = rotated_aabb.end.z
+			mesh_length = front_offset - back_offset
+		else:
+			# Project all 8 corners for non-facing
+			var curve_forward: Vector3 = curve.sample_baked_with_rotation(current_distance).basis.z
+			var corners: Array = []
+			for x in [rotated_aabb.position.x, rotated_aabb.end.x]:
+				for y in [rotated_aabb.position.y, rotated_aabb.end.y]:
+					for z in [rotated_aabb.position.z, rotated_aabb.end.z]:
+						corners.append(temp_transform.basis * Vector3(x, y, z))
+			
+			var projections: Array = corners.map(func(c): return c.dot(curve_forward))
+			back_offset = projections.min()
+			front_offset = projections.max()
+			mesh_length = front_offset - back_offset
 		
 		var placement_distance: float = current_distance - back_offset
 		
@@ -342,7 +360,6 @@ func _update_multimesh() -> void:
 		# If starting position is past curve, stop (for both modes)
 		if current_distance > curve_length - end_margin:
 			break
-		
 		
 		var curve_transform: Transform3D = curve.sample_baked_with_rotation(placement_distance)
 		var curve_position: Vector3 = curve_transform.origin
