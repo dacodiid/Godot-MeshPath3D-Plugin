@@ -468,32 +468,38 @@ func _bake_single_merged(meshes: Array, transforms: Array) -> Dictionary:
 
 
 func bake_multiple() -> Dictionary[String, Variant]:
-	# Just call each line's bake_multiple
 	var all_baked: Array[MeshInstance3D] = []
 	var container = null
 	
 	for line in _spawned_lines_list:
 		if not line:
 			continue
-		var result = line.bake_multiple()
+		var result = line.bake_multiple(self)
 		if container == null:
 			container = result.get("container")
+		# Fix positions
+		for mesh_instance in result.get("baked", []):
+			mesh_instance.global_transform = line.global_transform * mesh_instance.transform
 		all_baked.append_array(result.get("baked", []))
 	
 	return {"container": container, "baked": all_baked}
 
 
 func bake_multiple_with_collision() -> Dictionary[String, Variant]:
-	# Just call each line's bake_multiple_with_collision
 	var all_baked: Array = []
 	var container = null
 	
 	for line in _spawned_lines_list:
 		if not line:
 			continue
-		var result = line.bake_multiple_with_collision()
+		var result = line.bake_multiple_with_collision(self)
 		if container == null:
 			container = result.get("container")
+		# Fix positions
+		for baked_dict in result.get("baked", []):
+			var collision_body = baked_dict.get("collision_body")
+			if collision_body:
+				collision_body.global_transform = line.global_transform * collision_body.transform
 		all_baked.append_array(result.get("baked", []))
 	
 	return {"container": container, "baked": all_baked}
