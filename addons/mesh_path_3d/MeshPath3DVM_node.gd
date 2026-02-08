@@ -528,6 +528,8 @@ func bake_multiple_with_collision() -> Dictionary[String, Variant]:
 		var old_sibling = line.bake_as_sibling
 		var old_single = line.bake_in_single_sub_container
 		var old_separate = line.bake_in_separate_sub_containers
+		var old_collision = line.collision_type
+		line.collision_type = collision_type
 		line.bake_as_sibling = false
 		line.bake_in_single_sub_container = false
 		line.bake_in_separate_sub_containers = bake_in_separate_sub_containers
@@ -535,6 +537,7 @@ func bake_multiple_with_collision() -> Dictionary[String, Variant]:
 		var result = line.bake_multiple_with_collision(container)
 		
 		# Restore line's settings
+		line.collision_type = old_collision
 		line.bake_as_sibling = old_sibling
 		line.bake_in_single_sub_container = old_single
 		line.bake_in_separate_sub_containers = old_separate
@@ -557,18 +560,18 @@ func add_single_collision(parent_ref: Node = null) -> void:
 	var temp_line = template_lines[0]
 	var old_collision = temp_line.collision_type
 	temp_line.collision_type = collision_type
-	var collision_body = temp_line._create_collision_body(temp_line._get_container(parent_ref))
+	var collision_body = temp_line._create_collision_body(parent_ref if parent_ref else self)
 	var collision_shape = temp_line._create_collision_shape(combined_aabb.size, collision_body)
 	collision_body.global_position = combined_aabb.get_center()
 	# Restore
 	temp_line.collision_type = old_collision
 
 
-func add_multiple_collision() -> void:
+func add_multiple_collision(parent_ref: Node = null) -> void:
 	# Just call each line's add_multiple_collision
 	for line in _spawned_lines_list:
 		if line:
-			line.add_multiple_collision()
+			line.add_multiple_collision(parent_ref if parent_ref else self)
 
 
 func _calculate_all_aabb() -> AABB:
