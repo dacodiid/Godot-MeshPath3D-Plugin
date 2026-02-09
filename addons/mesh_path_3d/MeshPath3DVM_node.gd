@@ -387,18 +387,20 @@ func bake_single(parent_ref: Node = null) -> Dictionary:
 	# Custom: merge all lines into one mesh
 	var all_meshes: Array[Mesh] = []
 	var all_transforms: Array[Transform3D] = []
-	
+	var all_materials: Array[Material] = []
+
 	for line in _spawned_lines_list:
 		if not line:
 			continue
 		for i in range(line._placed_meshes.size()):
 			all_meshes.append(line._placed_meshes[i])
 			all_transforms.append(Transform3D(line._mesh_transforms[i].basis, line._mesh_transforms[i].origin + line.position))
-	
-	return _bake_single_merged(all_meshes, all_transforms, parent_ref)
+			all_materials.append(line.material)
+
+	return _bake_single_merged(all_meshes, all_transforms, all_materials, parent_ref)
 
 
-func _bake_single_merged(meshes: Array[Mesh], transforms: Array[Transform3D], parent_ref: Node = null) -> Dictionary:
+func _bake_single_merged(meshes: Array[Mesh], transforms: Array[Transform3D], materials: Array[Material], parent_ref: Node = null) -> Dictionary:
 	if meshes.is_empty():
 		push_warning("No meshes to bake!")
 		return {}
@@ -415,6 +417,7 @@ func _bake_single_merged(meshes: Array[Mesh], transforms: Array[Transform3D], pa
 		
 		for surface_idx in range(mesh.get_surface_count()):
 			surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+			surface_tool.set_material(materials[i])
 			
 			var arrays: Array = mesh.surface_get_arrays(surface_idx)
 			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -438,10 +441,6 @@ func _bake_single_merged(meshes: Array[Mesh], transforms: Array[Transform3D], pa
 	var baked_instance: MeshInstance3D = MeshInstance3D.new()
 	baked_instance.mesh = baked_mesh
 	baked_instance.name = name + "_Baked"
-	
-	# Use first template's material if available
-	if not template_lines.is_empty() and template_lines[0]:
-		baked_instance.material_override = template_lines[0].material
 	
 	# Get container from VM (this node), not from lines
 	var parent_node: Node
