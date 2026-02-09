@@ -34,7 +34,7 @@ func generate_baked_mesh_path(
 	path.curve.add_point(pos_from)
 	path.curve.add_point(pos_to)
 	mesh_path.path = path
-	# no need to add path a child not, it works
+	# no need to add the path as child node, it works
 	
 	# -- setup mehs & path
 	mesh_path.meshes = meshes
@@ -49,8 +49,52 @@ func generate_baked_mesh_path(
 	
 	await mesh_path.multimesh_updated
 	
-	var bake_result: Variant = mesh_path[BAKE_METHOD_KEYS[bake_method]].call()
+	var bake_result: Variant = mesh_path[BAKE_METHOD_KEYS[bake_method]].call(container)
 	
 	mesh_path.queue_free()
+	
+	return bake_result
+
+
+# @return {Dictionary[container: Node3D, bake: MeshInstance3D | Array[MeshInstance3D] 
+#	| Array[Dictionary[
+#		collision_body: CollisionObject3D,
+#		collision_shape: CollisionShape3D,
+#		mesh_instance: MeshInstance3D,
+#	]]}
+func generate_baked_mesh_path_vm(
+	container: Node,
+	bake_method: BAKE_METHOD,
+	pos_from: Vector3, 
+	pos_to: Vector3,
+	template_lines: Array[MeshPath3D],
+	optional_params: Dictionary[String, Variant] = {},
+) -> Variant:
+	var mesh_path_vm: MeshPath3DVM = MeshPath3DVM.new()
+	
+	# -- setup path
+	var path = Path3D.new()
+	path.curve = Curve3D.new()
+	path.curve.add_point(pos_from)
+	path.curve.add_point(pos_to)
+	mesh_path_vm.vertical_path = path
+	# no need to add the path as child node, it works
+	
+	# -- setup mehs & path
+	mesh_path_vm.template_lines = template_lines
+	
+	# -- setup additional params
+	for param: String in optional_params:
+		mesh_path_vm[param] = optional_params[param]
+	
+	container.add_child(mesh_path_vm)
+	
+	mesh_path_vm.call_update_all_lines()
+	
+	await mesh_path_vm.vertical_multimesh_updated
+	
+	var bake_result: Variant = mesh_path_vm[BAKE_METHOD_KEYS[bake_method]].call(container)
+	
+	mesh_path_vm.queue_free()
 	
 	return bake_result

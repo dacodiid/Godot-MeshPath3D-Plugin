@@ -286,7 +286,7 @@ func _create_line_copy(template: MeshPath3D) -> MeshPath3D:
 	new_line.material = template.material
 	if template.path:
 		var path_copy: Path3D = Path3D.new()
-		path_copy.curve = template.path.curve.duplicate(true)  # Add true for deep duplicate
+		path_copy.curve = template.path.curve.duplicate(true)
 		new_line.add_child(path_copy)
 		if not share_multimeshes:
 			path_copy.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
@@ -376,7 +376,7 @@ func setup_default_path() -> void:
 		new_path.owner = get_tree().edited_scene_root if Engine.is_editor_hint() else owner
 
 
-func bake_single() -> Dictionary:
+func bake_single(parent_ref: Node = null) -> Dictionary:
 	# Custom: merge all lines into one mesh
 	var all_meshes: Array[Mesh] = []
 	var all_transforms: Array[Transform3D] = []
@@ -388,10 +388,10 @@ func bake_single() -> Dictionary:
 			all_meshes.append(line._placed_meshes[i])
 			all_transforms.append(Transform3D(line._mesh_transforms[i].basis, line._mesh_transforms[i].origin + line.position))
 	
-	return _bake_single_merged(all_meshes, all_transforms)
+	return _bake_single_merged(all_meshes, all_transforms, parent_ref)
 
 
-func _bake_single_merged(meshes: Array, transforms: Array) -> Dictionary:
+func _bake_single_merged(meshes: Array[Mesh], transforms: Array[Transform3D], parent_ref: Node = null) -> Dictionary:
 	if meshes.is_empty():
 		push_warning("No meshes to bake!")
 		return {}
@@ -437,7 +437,12 @@ func _bake_single_merged(meshes: Array, transforms: Array) -> Dictionary:
 		baked_instance.material_override = template_lines[0].material
 	
 	# Get container from VM (this node), not from lines
-	var parent_node: Node = get_parent() if bake_as_sibling else self
+	var parent_node: Node
+	if parent_ref:
+		parent_node = parent_ref
+	else:
+		parent_node = get_parent() if bake_as_sibling else self
+	
 	var container: Node
 	
 	if bake_in_single_sub_container:
