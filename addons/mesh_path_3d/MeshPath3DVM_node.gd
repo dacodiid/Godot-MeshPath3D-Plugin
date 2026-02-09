@@ -8,7 +8,7 @@ signal vertical_multimesh_updated()
 
 @export_tool_button("randomize lines") var randomize_lines_btn: Callable = randomize_lines
 @export_tool_button("randomize meshes") var randomize_meshes_btn: Callable = randomize_meshes
-#@export_tool_button("re-render all") var update_all_btn: Callable = call_re_render_all
+@export_tool_button("re-render all") var update_all_btn: Callable = call_re_render_all
 
 @export_group("Bake")
 
@@ -153,9 +153,15 @@ func _on_vertical_path_changed() -> void:
 	call_update_all_lines()
 
 
-#func call_re_render_all() -> void:
-	#_clear_all_spawned_lines()
-	#call_update_all_lines()
+func call_re_render_all() -> void:
+	# Clear the flat list and free all nodes
+	for line in _spawned_lines_list:
+		if line:
+			line.queue_free()
+	_spawned_lines_list.clear()
+	_spawned_lines.clear()
+	
+	call_update_all_lines()
 
 
 func randomize_lines() -> void:
