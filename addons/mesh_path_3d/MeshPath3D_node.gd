@@ -246,14 +246,15 @@ func _update_multimesh() -> void:
 	var mesh_data: Array[Dictionary] = []
 	var current_distance: float = start_margin
 	var i: int = 0
+	var placed_count: int = 0
 	var mesh: Mesh
 	var mesh_is_old: bool = false
 	var meshes_size: int = meshes.size()
 	
 	while current_distance < curve_length - end_margin:
 		# Use existing mesh
-		if i < _placed_meshes.size():
-			mesh = _placed_meshes[i]
+		if placed_count < _placed_meshes.size():
+			mesh = _placed_meshes[placed_count]
 			mesh_is_old = true
 			if not random_pick:
 				_last_ordered_index = meshes.find(mesh)
@@ -414,9 +415,10 @@ func _update_multimesh() -> void:
 
 		current_distance += mesh_length + gap_value
 		i += 1
+		placed_count += 1
 	
 	# Trim excess meshes
-	while _placed_meshes.size() > i:
+	while _placed_meshes.size() > placed_count:
 		_placed_meshes.pop_back()
 		_placed_meshes_rotation.pop_back()
 		_placed_meshes_offset.pop_back()
@@ -908,14 +910,11 @@ func center_meshes() -> void:
 		push_warning("Requires path and placed meshes")
 		return
 	
-	clear_meshes()
-	call_update_multimesh()
-	await multimesh_updated
-	
 	var curve: Curve3D = path.curve
 	var curve_length: float = curve.get_baked_length()
+	var current_distance: float = start_margin
+	
 	var total_content: float = 0.0
-	var current_distance: float = start_margin  # Track position for curve sampling
 	
 	# Calculate mesh lengths using same logic as _update_multimesh
 	for i in range(_placed_meshes.size()):
@@ -946,14 +945,17 @@ func center_meshes() -> void:
 			mesh_length = projections.max() - projections.min()
 		
 		total_content += mesh_length
-		var gap: float = _placed_meshes_gaps[i] if i < _placed_meshes_gaps.size() else 0.0
-		current_distance += mesh_length + gap
-	
-	# Add all gaps except the last one
-	for i in range(_placed_meshes_gaps.size() - 1):
-		total_content += _placed_meshes_gaps[i]
+		
+		# Add gap after this mesh (if not the last mesh)
+		if i < _placed_meshes.size() - 1:
+			var gap: float = _placed_meshes_gaps[i]
+			total_content += gap
+			current_distance += mesh_length + gap
+		else:
+			current_distance += mesh_length
 	
 	var free_space: float = curve_length - total_content
+	
 	start_margin = max(0, free_space / 2.0)
 	end_margin = max(0, free_space / 2.0)
 	

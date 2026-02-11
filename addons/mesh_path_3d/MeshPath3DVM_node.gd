@@ -524,11 +524,16 @@ func bake_multiple() -> Dictionary[String, Variant]:
 	return {"container": container, "baked": all_baked}
 
 
-func bake_multiple_with_collision() -> Dictionary[String, Variant]:
+func bake_multiple_with_collision(parent_ref: Node = null) -> Dictionary[String, Variant]:
 	var all_baked: Array = []
 	
 	var parent_node: Node = get_parent() if bake_as_sibling else self
 	var container: Node
+	
+	if parent_ref:
+		parent_node = parent_ref
+	else:
+		parent_node = get_parent() if bake_as_sibling else self
 	
 	if bake_in_single_sub_container:
 		container = Node3D.new()
