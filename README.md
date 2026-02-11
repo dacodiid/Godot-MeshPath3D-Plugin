@@ -68,3 +68,4 @@ This plugin allows you to distribute meshes along Path3D with gaps, randomizatio
 ## Tutorials
 
 [Base usage and settings overview](https://youtu.be/Zi7eKfs-HbU)
+[Vertical wall settings overview](https://youtu.be/VNDj5EpiI4M)
